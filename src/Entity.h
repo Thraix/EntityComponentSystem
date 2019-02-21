@@ -12,7 +12,7 @@ namespace ecs
   class Entity
   {
     private:
-      std::unordered_map<ComponentId, ComponentContainerBase*> m_components;
+      std::unordered_map<ComponentId, int> m_components;
       ECSManager* manager;
     public:
       friend class ECSManager;
@@ -23,9 +23,10 @@ namespace ecs
 
       ~Entity()
       {
+        //TODO: Tell the ECSManager to remove all my components
         for(auto component : m_components)
         {
-          delete component.second;
+          //delete component.second;
         }
       }
 
@@ -43,11 +44,11 @@ namespace ecs
         return m_components.find(GetComponentId<T>()) != m_components.end();
       }
 
-      template <typename T>
-      T* GetComponent()
+      template <typename Component>
+      Component* GetComponent()
       {
-        auto it = m_components.find(GetComponentId<T>());
-        return it != m_components.end() ? &static_cast<ComponentContainer<T>*>(it->second)->component : nullptr; 
+        auto it = m_components.find(GetComponentId<Component>());
+        return it != m_components.end() ? manager->GetComponent<Component>(it->second) : nullptr; 
       }
 
       template <typename T, typename... Args>
@@ -62,9 +63,17 @@ namespace ecs
         }
         else
         {
-          ComponentContainer<T>* container = new ComponentContainer<T>(std::move(T(args...)));
-          m_components.emplace(GetComponentId<T>(), container);
-          T component = T(args...);
+          m_components.emplace(GetComponentId<T>(), manager->CreateComponent<T>(this, args...));
+        }
+      }
+
+      template <typename Component>
+      void UpdateComponentIndex(int index)
+      {
+        auto it = m_components.find(GetComponentId<Component>());
+        if(it != m_components.end())
+        {
+          it->second = index;
         }
       }
 
@@ -101,9 +110,8 @@ namespace ecs
 
       EntityIterator<iterator, Components...>& operator++()
       {
-        if(it == last)
-          return *this;
-        ++it;
+        if(it != last)
+          ++it;
         while(it != last && !(*it)->template HasComponents<Components...>())
         {
           ++it;

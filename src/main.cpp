@@ -96,8 +96,7 @@ struct TransformDebugSystem : public ecs::System<Nameable, Transform>
   {
     for(auto&& entity : GetEntities(manager))
     {
-      std::cout << entity->GetComponent<Nameable>()->name << " is at location: " << entity->GetComponent<Transform>()->x << ", " << entity->GetComponent<Transform>()->x << std::endl;
-
+      std::cout << entity->GetComponent<Nameable>()->name << " is at location: " << entity->GetComponent<Transform>()->x << ", " << entity->GetComponent<Transform>()->y << std::endl;
     }
   }
 };
