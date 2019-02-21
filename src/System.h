@@ -15,6 +15,11 @@ namespace ecs
   class System : public SystemBase
   {
     friend class ECSManager;
-    void Update(ECSManager* manager, float deltaTime)  override = 0;
+    virtual void Update(ECSManager* manager, float deltaTime)  override = 0;
+    public:
+      EntityContainer<std::vector<Entity*>&, Components...> GetEntities(ECSManager* manager)
+      {
+        return manager->GetEntities<Components...>();
+      }
   };
 }

@@ -52,7 +52,7 @@ struct MoveSystem : public ecs::System<Transform, Movement>
   void Update(ecs::ECSManager* manager, float deltaTime) override
   {
     // These are guaranteed to exist
-    for(auto&& entity : manager->GetEntities<Transform,Movement>()){
+    for(auto&& entity : GetEntities(manager)){
       Transform* transform = entity->GetComponent<Transform>();
       Movement* movement = entity->GetComponent<Movement>();
       transform->x += movement->vx * deltaTime;
@@ -65,7 +65,7 @@ struct PhysicalSystem : public ecs::System<Transform, Collidable>
 {
   void Update(ecs::ECSManager* manager, float deltaTime)
   {
-    auto entities = manager->GetEntities<Transform, Collidable>();
+    auto entities = GetEntities(manager);
     for(auto it = entities.begin(); it != entities.end(); ++it)
     {
       for(auto it2 = it; it2 != entities.end(); ++it2)
@@ -94,7 +94,7 @@ struct TransformDebugSystem : public ecs::System<Nameable, Transform>
 
   void Update(ecs::ECSManager* manager, float deltaTime)
   {
-    for(auto&& entity : manager->GetEntities<Nameable, Transform>())
+    for(auto&& entity : GetEntities(manager))
     {
       std::cout << entity->GetComponent<Nameable>()->name << " is at location: " << entity->GetComponent<Transform>()->x << ", " << entity->GetComponent<Transform>()->x << std::endl;
 
@@ -117,6 +117,7 @@ int main()
   entity2->AddComponent<Movement>(0.0, 0.0);
   entity2->AddComponent<Collidable>();
   entity2->AddComponent<Nameable>("Big shack");
+  Entity* dummy = manager->CreateEntity();
 
   Transform* transform = entity->GetComponent<Transform>();
   manager->AddSystem(new MoveSystem());
