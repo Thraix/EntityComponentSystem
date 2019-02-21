@@ -37,6 +37,16 @@ struct Movement
 struct Collidable
 {};
 
+struct Nameable
+{
+  std::string name;
+  Nameable(const std::string& name)
+    : name{name}
+  {
+  
+  }
+};
+
 struct MoveSystem : public ecs::System<Transform, Movement>
 {
   void Update(ecs::ECSManager* manager, float deltaTime) override
@@ -48,9 +58,6 @@ struct MoveSystem : public ecs::System<Transform, Movement>
       transform->x += movement->vx * deltaTime;
       transform->y += movement->vy * deltaTime;
     }
-    //for(auto entity :manager->GetEntities<Transform, Movement>();
-    //transform->x += movement->vx * deltaTime;
-    //transform->y += movement->vy * deltaTime;
   }
 };
 
@@ -65,7 +72,6 @@ struct PhysicalSystem : public ecs::System<Transform, Collidable>
       {
         if(it2 == it)
           continue;
-        std::cout << "hello" << std::endl;
         CheckCollision(*it, *it2);
       }
     }
@@ -83,6 +89,18 @@ struct PhysicalSystem : public ecs::System<Transform, Collidable>
   }
 };
 
+struct TransformDebugSystem : public ecs::System<Nameable, Transform>
+{
+
+  void Update(ecs::ECSManager* manager, float deltaTime)
+  {
+    for(auto&& entity : manager->GetEntities<Nameable, Transform>())
+    {
+      std::cout << entity->GetComponent<Nameable>()->name << " is at location: " << entity->GetComponent<Transform>()->x << ", " << entity->GetComponent<Transform>()->x << std::endl;
+
+    }
+  }
+};
 
 
 int main()
@@ -93,20 +111,22 @@ int main()
   entity->AddComponent<Transform>(1.1f, 2.0f);
   entity->AddComponent<Movement>(5.0, 0.0);
   entity->AddComponent<Collidable>();
+  entity->AddComponent<Nameable>("slim shady");
   Entity* entity2 = manager->CreateEntity();
-  entity2->AddComponent<Transform>(10.0f, 2.0f);
+  entity2->AddComponent<Transform>(10.0f, 2.0f, 2.0, 2.0);
   entity2->AddComponent<Movement>(0.0, 0.0);
   entity2->AddComponent<Collidable>();
+  entity2->AddComponent<Nameable>("Big shack");
 
   Transform* transform = entity->GetComponent<Transform>();
   manager->AddSystem(new MoveSystem());
   manager->AddSystem(new PhysicalSystem());
+  manager->AddSystem(new TransformDebugSystem());
 
   // Main loop
   for(int i = 0;i<10;i++)
   {
     manager->Update(0.25f);
-    std::cout << transform->x << " " << transform->y << std::endl;
   }
 
   return 0;

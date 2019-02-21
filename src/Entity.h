@@ -103,11 +103,10 @@ namespace ecs
       {
         if(it == last)
           return *this;
-        while((*it)->template HasComponents<Components...>())
+        ++it;
+        while(it != last && !(*it)->template HasComponents<Components...>())
         {
           ++it;
-          if(it == last)
-            return *this;
         }
         return *this;
       }
