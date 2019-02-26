@@ -3,19 +3,84 @@
 #include <stdlib.h>
 #include <cstring>
 #include <utility>
+#include <functional>
 #include <exception>
 
 
 // TODO
-// Add an iterator class for this container
-// Add Begin and End which returns iterators for this class
 // Add function that will minimize the size of the container, currently
 //   the size can only increase.
 //
 namespace ecs
 {
+
+  class ComponentIterator
+  {
+    public:
+
+      using difference_type = void;
+      using value_type = void*;
+      using pointer = void;
+      using reference = void*;
+      using iterator_category = std::bidirectional_iterator_tag;	
+
+      void* it;
+      const void* start;
+      const void* last;
+      size_t byteSize;
+
+      ComponentIterator(size_t byteSize, void* it, void* start, void* last)
+        : it{it}, start{start}, last{last}, byteSize{byteSize}
+      {
+      }
+
+      value_type operator*()
+      {
+        return it;
+      }
+
+      ComponentIterator& operator++()
+      {
+        if(it != last)
+          it = (char*)it + byteSize;
+        return *this;
+      }
+
+      ComponentIterator operator++(int)
+      {
+        auto tmp{*this};
+        ++*this;
+        return tmp;
+      }
+
+      ComponentIterator& operator--()
+      {
+        if(it != start)
+          it = (char*)it - byteSize;
+        return *this;
+      }
+
+      ComponentIterator operator--(int)
+      {
+        auto tmp{*this};
+        --*this;
+        return tmp;
+      }
+
+      bool operator==(ComponentIterator other)
+      {
+        return it == other.it;
+      }
+
+      bool operator!=(ComponentIterator other)
+      {
+        return it != other.it;
+      }
+  };
+
   class ComponentContainer
   {
+    using Iterator = ComponentIterator;
     size_t byteSize;
     size_t count;
     size_t reserve;
@@ -23,7 +88,7 @@ namespace ecs
 
     public:
       ComponentContainer(size_t byteSize, size_t n=0)
-        : byteSize{byteSize}, reserve{n}, count{0}
+        : byteSize{byteSize}, reserve{n}, count{0}, memory{malloc(n)}
       {
 
       }
@@ -131,6 +196,28 @@ namespace ecs
         free(memory);
         memory = newmem;
         return true;
+      }
+
+      Iterator Begin()
+      {
+        return Iterator(byteSize, memory, memory, (char*)memory+byteSize*count);
+      }
+
+      Iterator End()
+      {
+        return Iterator(byteSize, (char*)memory+byteSize*count, memory, (char*)memory+byteSize*count);
+      }
+
+
+      // Needed to do for each loops
+      Iterator begin()
+      {
+        return Begin();
+      }
+
+      Iterator end()
+      {
+        return End();
       }
 
     private:

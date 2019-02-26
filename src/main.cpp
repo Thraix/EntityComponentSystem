@@ -141,13 +141,16 @@ int main()
   //container.Pop();
   container.Erase(3);
   container.Insert(3, Transform(3,3));
-  for(size_t i = 0;i<container.Size();i++)
+  for(auto comp : container)
   {
-    Transform* t = (Transform*)container[i];
+    Transform* t = (Transform*)comp;
     std::cout << t->x << " " << t->y << std::endl;
   }
 
   std::cout << container.ReserveSize() << std::endl;
+
+  std::vector<int> vec;
+  vec.begin();
 
   return 0;
 }
