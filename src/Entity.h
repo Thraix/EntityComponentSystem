@@ -63,7 +63,7 @@ namespace ecs
         }
         else
         {
-          m_components.emplace(GetComponentId<T>(), manager->CreateComponent<T>(this, args...));
+          m_components.emplace(GetComponentId<T>(), manager->CreateComponent<T>(args...));
         }
       }
 

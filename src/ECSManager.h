@@ -4,6 +4,7 @@
 #include <vector>
 #include <iostream>
 #include "Component.h"
+#include "ComponentContainer.h"
 
 namespace ecs
 {
@@ -18,26 +19,25 @@ namespace ecs
   {
     std::vector<Entity*> entities;
     std::vector<SystemBase*> systems;
-    std::unordered_map<ComponentId, void*> componentHandler; // void* is here a vector of the same component
+    std::unordered_map<ComponentId, ComponentContainer*> componentHandler;
     public:
       Entity* CreateEntity();
 
       template <typename Component, typename... Args>
-      int CreateComponent(Entity* owner, Args... args)
+      int CreateComponent(Args... args)
       {
         auto it = componentHandler.find(GetComponentId<Component>());
 
         if(it != componentHandler.end())
         {
-          auto vec = CastVector<Component>(it->second);
-          vec->push_back(std::make_pair(owner, Component(args...)));
-          return vec->size() - 1; 
+          it->second->Push(Component(args...));
+          return it->second->Size() - 1; 
         }
         else
         {
-          std::vector<std::pair<Entity*, Component>>* vec = new std::vector<std::pair<Entity*, Component>>{};
-          vec->push_back(std::make_pair(owner, Component(args...)));
-          componentHandler.emplace(GetComponentId<Component>(), vec);
+          ComponentContainer* container = new ComponentContainer(sizeof(Component));
+          container->Push(Component(args...));
+          componentHandler.emplace(GetComponentId<Component>(), container);
           return 0;
         }
       }
@@ -48,8 +48,7 @@ namespace ecs
         auto it = componentHandler.find(GetComponentId<Component>());
         if(it != componentHandler.end())
         {
-          auto vec = CastVector<Component>(it->second);
-          return &vec->at(index).second;
+          return it->second->template At<Component>(index);
         }
         return nullptr;
       }
@@ -63,13 +62,6 @@ namespace ecs
       }
 
       void Update(float deltaTime);
-
-    private:
-      template <typename Component>
-      inline std::vector<std::pair<Entity*, Component>>* CastVector(void* vec)
-      {
-        return static_cast<std::vector<std::pair<Entity*, Component>>*>(vec);
-      }
 
   };
 }

@@ -4,6 +4,7 @@
 #include "Entity.h"
 #include "System.h"
 
+#include "ComponentContainer.h"
 
 struct Transform
 {
@@ -43,7 +44,7 @@ struct Nameable
   Nameable(const std::string& name)
     : name{name}
   {
-  
+
   }
 };
 
@@ -81,7 +82,7 @@ struct PhysicalSystem : public ecs::System<Transform, Collidable>
   {
     Transform* t1 = e1->GetComponent<Transform>();
     Transform* t2 = e2->GetComponent<Transform>();
-    
+
     if(t1->x < t2->x + t2->sx && t1->y < t2->y + t2->sy && t2->x < t1->x + t1->sx && t2->y < t1->y + t1->sy)
     {
       std::cout << "Collision has occured" << std::endl;
@@ -104,6 +105,7 @@ struct TransformDebugSystem : public ecs::System<Nameable, Transform>
 
 int main()
 {
+#if 1
   using namespace ecs;
   ECSManager* manager = new ECSManager();
   Entity* entity = manager->CreateEntity();
@@ -128,6 +130,24 @@ int main()
   {
     manager->Update(0.25f);
   }
+#endif
+
+  ecs::ComponentContainer container = ecs::ComponentContainer(sizeof(Transform));
+  for(float i = 0;i<16;i++)
+  {
+    container.Push(Transform(i,i));
+  }
+
+  //container.Pop();
+  container.Erase(3);
+  container.Insert(3, Transform(3,3));
+  for(size_t i = 0;i<container.Size();i++)
+  {
+    Transform* t = (Transform*)container[i];
+    std::cout << t->x << " " << t->y << std::endl;
+  }
+
+  std::cout << container.ReserveSize() << std::endl;
 
   return 0;
 }
