@@ -5,23 +5,22 @@
 #include <iostream>
 #include "Component.h"
 #include "ComponentContainer.h"
+#include "EntityContainer.h"
 
 namespace ecs
 {
   class Entity;
   class SystemBase;
 
-  template <typename container, typename... Components>
-  class EntityContainer;
-
-
   class ECSManager
   {
+    bool destroyingEntity;
     std::vector<Entity*> entities;
     std::vector<SystemBase*> systems;
     std::unordered_map<ComponentId, ComponentContainer*> componentHandler;
     public:
       Entity* CreateEntity();
+      void DestroyEntity(Entity* entity);
 
       template <typename Component, typename... Args>
       int CreateComponent(Args... args)

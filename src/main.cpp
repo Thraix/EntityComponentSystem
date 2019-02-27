@@ -113,12 +113,16 @@ int main()
   entity->AddComponent<Movement>(5.0, 0.0);
   entity->AddComponent<Collidable>();
   entity->AddComponent<Nameable>("slim shady");
+
+  Entity* dummy = manager->CreateEntity();
+  dummy->AddComponent<Nameable>("Lil Pump");
+  dummy->AddComponent<Transform>(10.0f, 2.0f, 2.0, 2.0);
+
   Entity* entity2 = manager->CreateEntity();
   entity2->AddComponent<Transform>(10.0f, 2.0f, 2.0, 2.0);
   entity2->AddComponent<Movement>(0.0, 0.0);
   entity2->AddComponent<Collidable>();
   entity2->AddComponent<Nameable>("Big shack");
-  Entity* dummy = manager->CreateEntity();
 
   Transform* transform = entity->GetComponent<Transform>();
   manager->AddSystem(new MoveSystem());
@@ -129,6 +133,9 @@ int main()
   for(int i = 0;i<10;i++)
   {
     manager->Update(0.25f);
+    if(dummy)
+      manager->DestroyEntity(dummy);
+    dummy = nullptr;
   }
 #endif
 

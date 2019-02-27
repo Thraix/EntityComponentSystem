@@ -14,19 +14,23 @@ namespace ecs
     private:
       std::unordered_map<ComponentId, int> m_components;
       ECSManager* manager;
-    public:
+      bool shouldDestroy;
       friend class ECSManager;
+    private:
+      // Should be created by the ECSManager
       Entity(ECSManager* manager)
         : manager{manager}
       {
       }
+    public:
 
       ~Entity()
       {
-        //TODO: Tell the ECSManager to remove all my components
-        for(auto component : m_components)
+        if(!ShouldDestroy())
         {
-          //delete component.second;
+          std::cerr << "-------------------------------------------------" << std::endl;
+          std::cerr << "ERROR: Entity was not destroyed by the ECSManager" << std::endl;
+          std::cerr << "-------------------------------------------------" << std::endl;
         }
       }
 
@@ -82,77 +86,16 @@ namespace ecs
       {
         fWith(GetComponent<Components>()...);
       }
-  };
 
-  template <typename iterator, typename...Components>
-  class EntityIterator
-  {
-    public:
-
-      using difference_type = void;
-      using value_type = Entity*;
-      using pointer = void;
-      using reference = Entity*;
-      using iterator_category = std::bidirectional_iterator_tag;	
-
-      iterator it;
-      iterator last;
-
-      EntityIterator(iterator it, iterator last)
-        : it{it}, last{last}
+      bool ShouldDestroy()
       {
+        return shouldDestroy;
       }
 
-      value_type operator*()
-      {
-        return *it;
-      }
-
-      EntityIterator<iterator, Components...>& operator++()
-      {
-        if(it != last)
-          ++it;
-        while(it != last && !(*it)->template HasComponents<Components...>())
-        {
-          ++it;
-        }
-        return *this;
-      }
-
-      EntityIterator<iterator, Components...> operator++(int)
-      {
-        auto tmp{*this};
-        ++*this;
-        return tmp;
-      }
-
-      bool operator==(EntityIterator<iterator, Components...> other)
-      {
-        return it == other.it;
-      }
-
-      bool operator!=(EntityIterator<iterator, Components...> other)
-      {
-        return it != other.it;
-      }
-  };
-
-  template <typename Container, typename... Components>
-  class EntityContainer
-  {
-    using iterator = decltype(std::begin(std::declval<Container>()));
     private:
-      EntityIterator<iterator,Components...> first;
-      EntityIterator<iterator,Components...> last;
-
-    public:
-      EntityContainer(Container& c)
-        : first{std::begin(c), std::end(c)}, last{std::end(c), std::end(c)}
-      {}
-
-      EntityIterator<iterator,Components...> begin() { return first;}
-      EntityIterator<iterator,Components...> end() { return last;}
-
+      void PrepareDestroy()
+      {
+        shouldDestroy = true;
+      }
   };
-
 }

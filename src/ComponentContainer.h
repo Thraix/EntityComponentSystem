@@ -10,6 +10,7 @@
 // TODO
 // Add function that will minimize the size of the container, currently
 //   the size can only increase.
+// Add Macro that can be disabled that checks for bounds, correct size, etc.
 //
 namespace ecs
 {
