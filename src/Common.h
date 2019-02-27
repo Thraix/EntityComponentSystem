@@ -1,5 +1,7 @@
 #pragma once
 
+#include <iostream>
+
 #ifdef _DEBUG
 #define ASSERT(x, msg) if(!(x)) \
 {\

@@ -1,5 +1,7 @@
 #pragma once
 
+#include "Common.h"
+
 #include <stdlib.h>
 #include <cstring>
 #include <utility>
@@ -104,8 +106,7 @@ namespace ecs
       template <typename Component>
       bool Push(Component&& component)
       {
-        if(sizeof(Component) != byteSize)
-          return false;
+        ASSERT(sizeof(Component) == byteSize, "Size of Component doesn't match the byteSize");
         if(!CheckResize())
           return false;
 
@@ -123,13 +124,11 @@ namespace ecs
       template <typename Component>
       bool Insert(size_t index, Component&& component)
       {
-        if(sizeof(Component) != byteSize)
-          return false;
+        ASSERT(sizeof(Component) == byteSize, "Size of Component doesn't match the byteSize");
+        ASSERT(index < count, "Index Out of Bound Exception");
         if(!CheckResize())
           return false;
-        // Out of range
-        if(index >= count)
-          return false;
+
         if(index == count)
           return Push(std::forward<Component>(component));
 
@@ -148,9 +147,7 @@ namespace ecs
 
       void Erase(size_t index)
       {
-        // Out of range
-        if(index >= count)
-          return;
+        ASSERT(index < count, "Index Out of Bound Exception");
 
         // Last element
         if(index == count - 1)
@@ -158,10 +155,12 @@ namespace ecs
           Pop();
           return;
         }
+
         memmove(
             (char*)memory + index*byteSize, 
             (char*)memory + (index+1)*byteSize, 
             (count - index - 1)*byteSize);
+
         count--;
       }
 
@@ -173,8 +172,7 @@ namespace ecs
 
       void* operator[](size_t index)
       {
-        if(index >= count)
-          return nullptr;
+        ASSERT(index < count, "Index Out of Bound Exception");
         return (char*)memory + index*byteSize;
       }
 
@@ -183,20 +181,24 @@ namespace ecs
         return count;
       }
 
-      size_t ReserveSize()
+      size_t Capacity()
       {
         return reserve;
       }
 
-      bool Reserve(size_t reservate)
+      void Reserve(size_t reservate)
       {
-        if(reservate < reserve)
-          return false;
+        ASSERT(reservate >= count, "Trying to reserve less than the size of the container");
         void* newmem = malloc(reservate * byteSize); 
         memcpy(newmem, memory, count * byteSize);
         free(memory);
         memory = newmem;
-        return true;
+        reserve = reservate;
+      }
+
+      void ShrinkToFit()
+      {
+        Reserve(count);
       }
 
       Iterator Begin()

@@ -110,7 +110,7 @@ int main()
   ECSManager* manager = new ECSManager();
   Entity* entity = manager->CreateEntity();
   entity->AddComponent<Transform>(1.1f, 2.0f);
-  entity->AddComponent<Movement>(5.0, 0.0);
+  entity->AddComponent<Movement>(1.0, 0.0);
   entity->AddComponent<Collidable>();
   entity->AddComponent<Nameable>("slim shady");
 
@@ -119,10 +119,10 @@ int main()
   dummy->AddComponent<Transform>(10.0f, 2.0f, 2.0, 2.0);
 
   Entity* entity2 = manager->CreateEntity();
+  entity2->AddComponent<Nameable>("Big shack");
   entity2->AddComponent<Transform>(10.0f, 2.0f, 2.0, 2.0);
   entity2->AddComponent<Movement>(0.0, 0.0);
   entity2->AddComponent<Collidable>();
-  entity2->AddComponent<Nameable>("Big shack");
 
   Transform* transform = entity->GetComponent<Transform>();
   manager->AddSystem(new MoveSystem());
@@ -132,7 +132,7 @@ int main()
   // Main loop
   for(int i = 0;i<10;i++)
   {
-    manager->Update(0.25f);
+    manager->Update(1.0f);
     if(dummy)
       manager->DestroyEntity(dummy);
     dummy = nullptr;
@@ -140,10 +140,11 @@ int main()
 #endif
 
   ecs::ComponentContainer container = ecs::ComponentContainer(sizeof(Transform));
-  for(float i = 0;i<16;i++)
+  for(float i = 0;i<10;i++)
   {
     container.Push(Transform(i,i));
   }
+  container.ShrinkToFit();
 
   //container.Pop();
   container.Erase(3);
@@ -154,7 +155,7 @@ int main()
     std::cout << t->x << " " << t->y << std::endl;
   }
 
-  std::cout << container.ReserveSize() << std::endl;
+  std::cout << container.Capacity() << std::endl;
 
   std::vector<int> vec;
   vec.begin();

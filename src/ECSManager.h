@@ -61,6 +61,9 @@ namespace ecs
       }
 
       void Update(float deltaTime);
+      
+    private:
+      void RemoveDestroyedEntities();
 
   };
 }
