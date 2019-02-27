@@ -11,11 +11,11 @@ namespace ecs
 
   class Entity
   {
+    friend class ECSManager;
     private:
       std::unordered_map<ComponentId, int> m_components;
       ECSManager* manager;
       bool shouldDestroy;
-      friend class ECSManager;
     private:
       // Should be created by the ECSManager
       Entity(ECSManager* manager)
@@ -70,6 +70,23 @@ namespace ecs
           m_components.emplace(GetComponentId<T>(), manager->CreateComponent<T>(args...));
         }
       }
+
+      template <typename Component>
+      void RemoveComponent()
+      {
+        auto it = m_components.find(GetComponentId<Component>());
+        if(it == m_components.end())
+        {
+          std::cerr << "-------------------------------" << std::endl;
+          std::cerr << "ERROR: Component doesn't exists" << std::endl;
+          std::cerr << "-------------------------------" << std::endl;
+          return;
+        }
+        manager->DestroyComponent<Component>(it->second);
+        m_components.erase(it);
+        ASSERT(m_components.find(GetComponentId<Component>()) == m_components.end(), "Failed to remove correct component");
+      }
+
 
       template <typename Component>
       void UpdateComponentIndex(int index)

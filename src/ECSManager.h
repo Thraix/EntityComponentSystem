@@ -2,6 +2,7 @@
 
 #include <unordered_map>
 #include <vector>
+#include <set>
 #include <iostream>
 #include "Component.h"
 #include "ComponentContainer.h"
@@ -14,14 +15,41 @@ namespace ecs
 
   class ECSManager
   {
-    bool destroyingEntity;
-    std::vector<Entity*> entities;
-    std::vector<SystemBase*> systems;
-    std::unordered_map<ComponentId, ComponentContainer*> componentHandler;
+    friend class Entity;
+
+    private:
+      bool destroyingEntity;
+      std::vector<Entity*> entities;
+      std::vector<SystemBase*> systems;
+      std::unordered_map<ComponentId, ComponentContainer*> componentHandler;
+      std::unordered_map<ComponentId, std::set<int>> removeComponentQueue;
     public:
       Entity* CreateEntity();
       void DestroyEntity(Entity* entity);
 
+      template <typename Component>
+      Component* GetComponent(int index)
+      {
+        auto it = componentHandler.find(GetComponentId<Component>());
+        if(it != componentHandler.end())
+        {
+          return it->second->template At<Component>(index);
+        }
+        return nullptr;
+      }
+
+      void AddSystem(SystemBase* system);
+      SystemBase* RemoveSystem(SystemBase* system);
+
+      template <typename... Components>
+      EntityContainer<std::vector<Entity*>&, Components...> GetEntities()
+      {
+        return EntityContainer<decltype(entities)&,Components...>(entities);
+      }
+
+      void Update(float deltaTime);
+
+    private:
       template <typename Component, typename... Args>
       int CreateComponent(Args... args)
       {
@@ -42,28 +70,27 @@ namespace ecs
       }
 
       template <typename Component>
-      Component* GetComponent(int index)
+      void DestroyComponent(int index)
       {
-        auto it = componentHandler.find(GetComponentId<Component>());
-        if(it != componentHandler.end())
+        ASSERT(
+            componentHandler.find(GetComponentId<Component>()) != componentHandler.end(), 
+            "Cannot find component type in ComponentHandler");
+        auto it = removeComponentQueue.find(GetComponentId<Component>());
+        if(it == removeComponentQueue.end())
         {
-          return it->second->template At<Component>(index);
+          removeComponentQueue.emplace(GetComponentId<Component>(), std::set<int>{index});
         }
-        return nullptr;
+        else 
+        {
+          it->second.emplace(index);
+        }
       }
 
-      void AddSystem(SystemBase* system);
+      void RemoveDestroyed();
 
-      template <typename... Components>
-      EntityContainer<std::vector<Entity*>&, Components...> GetEntities()
-      {
-        return EntityContainer<decltype(entities)&,Components...>(entities);
-      }
-
-      void Update(float deltaTime);
-      
-    private:
-      void RemoveDestroyedEntities();
+      void RemoveDestroyedEntities(std::unordered_map<ComponentId, std::set<int>>& removedComponents);
+      void RemoveDestroyedComponents(std::unordered_map<ComponentId, std::set<int>>& removedComponents);
+      void UpdateEntityComponentIndex(std::unordered_map<ComponentId, std::set<int>>& removedComponents);
 
   };
 }

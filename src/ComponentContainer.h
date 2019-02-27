@@ -9,29 +9,25 @@
 #include <exception>
 
 
-// TODO
-// Add function that will minimize the size of the container, currently
-//   the size can only increase.
-// Add Macro that can be disabled that checks for bounds, correct size, etc.
-//
 namespace ecs
 {
 
   class ComponentIterator
   {
-    public:
 
-      using difference_type = void;
-      using value_type = void*;
-      using pointer = void;
-      using reference = void*;
-      using iterator_category = std::bidirectional_iterator_tag;	
+    using difference_type = void;
+    using value_type = void*;
+    using pointer = void;
+    using reference = void*;
+    using iterator_category = std::bidirectional_iterator_tag;	
 
+    private:
       void* it;
       const void* start;
       const void* last;
       size_t byteSize;
 
+    public:
       ComponentIterator(size_t byteSize, void* it, void* start, void* last)
         : it{it}, start{start}, last{last}, byteSize{byteSize}
       {
@@ -84,10 +80,11 @@ namespace ecs
   class ComponentContainer
   {
     using Iterator = ComponentIterator;
-    size_t byteSize;
-    size_t count;
-    size_t reserve;
-    void* memory;
+    private:
+      size_t byteSize;
+      size_t count;
+      size_t reserve;
+      void* memory;
 
     public:
       ComponentContainer(size_t byteSize, size_t n=0)

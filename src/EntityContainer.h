@@ -1,6 +1,7 @@
 #pragma once
 
 #include <functional>
+#include <iostream>
 
 namespace ecs
 {
@@ -22,6 +23,15 @@ namespace ecs
       EntityIterator(iterator it, iterator last)
         : it{it}, last{last}
       {
+        IncreaseToValid();
+      }
+
+      void IncreaseToValid()
+      {
+        while(it != last && !(*it)->template HasComponents<Components...>())
+        {
+          ++it;
+        }
       }
 
       value_type operator*()
@@ -33,10 +43,7 @@ namespace ecs
       {
         if(it != last)
           ++it;
-        while(it != last && !(*it)->template HasComponents<Components...>())
-        {
-          ++it;
-        }
+        IncreaseToValid();
         return *this;
       }
 

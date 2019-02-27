@@ -69,6 +69,7 @@ struct PhysicalSystem : public ecs::System<Transform, Collidable>
     auto entities = GetEntities(manager);
     for(auto it = entities.begin(); it != entities.end(); ++it)
     {
+      //ASSERT((*it)->HasComponents<Collidable>(), "entity doesn't have specified component");
       for(auto it2 = it; it2 != entities.end(); ++it2)
       {
         if(it2 == it)
@@ -124,18 +125,25 @@ int main()
   entity2->AddComponent<Movement>(0.0, 0.0);
   entity2->AddComponent<Collidable>();
 
-  Transform* transform = entity->GetComponent<Transform>();
+  TransformDebugSystem* debugSystem = new TransformDebugSystem();
+
   manager->AddSystem(new MoveSystem());
   manager->AddSystem(new PhysicalSystem());
-  manager->AddSystem(new TransformDebugSystem());
+  manager->AddSystem(debugSystem);
 
   // Main loop
   for(int i = 0;i<10;i++)
   {
+    std::cout << i << std::endl;
     manager->Update(1.0f);
-    if(dummy)
+    if(i == 1)
       manager->DestroyEntity(dummy);
-    dummy = nullptr;
+    if(i == 3)
+      manager->RemoveSystem(debugSystem);
+    if(i == 8)
+    {
+      entity->RemoveComponent<Collidable>();
+    }
   }
 #endif
 
