@@ -19,7 +19,10 @@ struct Transform
 };
 
 struct Renderable
-{};
+{
+  int shader;
+  uint32_t color;
+};
 
 struct Movement
 {
@@ -68,18 +71,17 @@ int main()
   ECSManager* manager = new ECSManager();
   EntityID entity = manager->CreateEntity();
   manager->AddComponent<Transform>(entity, 1.1f, 2.0f);
-  /* manager->AddComponent<Transform>(entity, 1.1f, 2.0f); */
   manager->AddComponent<Movement>(entity, 1.0f, 0.0f);
   manager->AddComponent<Collidable>(entity);
-  manager->AddComponent<Nameable>(entity, "EntityID 1");
+  manager->AddComponent<Nameable>(entity, "Entity 1");
 
   EntityID dummy = manager->CreateEntity();
-  manager->AddComponent<Nameable>(dummy, "EntityID 2");
+  manager->AddComponent<Nameable>(dummy, "Entity 2");
   manager->AddComponent<Transform>(dummy, 10.0f, 2.0f, 2.0f, 2.0f);
   manager->AddComponent<Movement>(dummy, 10.0f, 2.0f);
 
   EntityID entity2 = manager->CreateEntity();
-  manager->AddComponent<Nameable>(entity2, "EntityID 3");
+  manager->AddComponent<Nameable>(entity2, "Entity 3");
   manager->AddComponent<Transform>(entity2, 10.0f, 2.0f, 2.0f, 2.0f);
   manager->AddComponent<Movement>(entity2, 0.0f, 0.0f);
   manager->AddComponent<Collidable>(entity2);
@@ -103,16 +105,17 @@ int main()
   // Main loop
   for(int i = 0;i<10;i++)
   {
-    std::cout << i << std::endl;
+    std::cout << "Iteration: " << i << std::endl;
     MoveSystem(manager, 1.0f);
     /* manager->Update(1.0f); */
     if(i == 1)
-      manager->DestroyEntityID(dummy);
+      manager->DestroyEntity(dummy);
     if(i < 7)
       DebugSystem(manager);
-    if(i == 8)
+    if(i >= 8)
     {
-      manager->RemoveComponent<Collidable>(entity);
+      if(manager->HasComponent<Collidable>(entity))
+        manager->RemoveComponent<Collidable>(entity);
     }
   }
 #endif

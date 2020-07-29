@@ -2,6 +2,7 @@
 
 #include "Common.h"
 #include "Config.h"
+#include "EntitySet.h"
 
 #include <vector>
 #include <stdlib.h>
@@ -87,10 +88,7 @@ namespace ecs
       size_t count;
       size_t reserve;
       void* memory;
-      std::vector<EntityID> entities;
-
-      // Keep track of the last found entity to speed up component getters
-      std::pair<EntityID, size_t> findComponentCache = {0, 0};
+      EntitySet entities;
 
     public:
       ComponentSet(size_t byteSize)
@@ -102,8 +100,14 @@ namespace ecs
       ComponentSet(EntityID entity, Component&& component)
         : byteSize{sizeof(Component)}, reserve{1}, count{0}, memory{malloc(sizeof(Component))}
       {
-        Push<Component>(entity, std::move(component));
+        Emplace<Component>(entity, std::move(component));
       }
+
+      ComponentSet(const ComponentSet& set) = delete;
+      ComponentSet(ComponentSet&& set) = delete;
+
+      ComponentSet& operator=(const ComponentSet& set) = delete;
+      ComponentSet& operator=(ComponentSet&& set) = delete;
 
       ~ComponentSet()
       {
@@ -111,7 +115,7 @@ namespace ecs
       }
 
       template <typename Component>
-      std::pair<bool, Iterator> Push(EntityID entity, Component&& component)
+      std::pair<bool, Iterator> Emplace(EntityID entity, Component&& component)
       {
         ASSERT(sizeof(Component) == byteSize, "Size of Component doesn't match the byteSize");
         if(!CheckResize())
@@ -120,65 +124,27 @@ namespace ecs
         Component* comp = ((Component*)memory)+count;
         *comp = component;
         count++;
-        entities.push_back(entity);
+        entities.Emplace(entity);
         return {true, Last()};
       }
 
       void Pop()
       {
         count--;
+        entities.Pop();
       }
 
-      template <typename Component>
-      std::pair<bool, Iterator> Insert(size_t index, EntityID entity, Component&& component)
+      bool Erase(EntityID entity)
       {
-        ASSERT(sizeof(Component) == byteSize, "Size of Component doesn't match the byteSize");
-        ASSERT(index < count, "Index Out of Bound Exception");
-        if(!CheckResize())
-          return {false, End()};
-
-        if(index == count)
-          return Push(std::forward<Component>(component));
-
-        memmove(
-            (char*)memory + (index+1)*byteSize,
-            (char*)memory + index*byteSize,
-            (count - index)*byteSize);
-
-        Component* comp = ((Component*)memory)+index;
-        *comp = std::forward<Component>(component);
-        count++;
-        entities.insert(entities.begin() + index, entity);
-
-        return {true, Last()};
-
-      }
-
-      void EraseEntityID(EntityID entity)
-      {
-        size_t index = Find(entity);
-        ASSERT(index < Size(), "EntityID does not have component");
-        EraseIndex(index);
-      }
-
-      void EraseIndex(size_t index)
-      {
-        ASSERT(index < count, "Index Out of Bound Exception");
-
-        // Last element
-        if(index == count - 1)
-        {
-          Pop();
-          return;
-        }
-
+        size_t index = entities.Find(entity);
+        if(!entities.Erase(entity))
+          return false;
         memmove(
             (char*)memory + index*byteSize,
             (char*)memory + (index+1)*byteSize,
             (count - index - 1)*byteSize);
-        entities.erase(entities.begin() + index);
-
         count--;
+        return true;
       }
 
       template<typename Component>
@@ -189,30 +155,17 @@ namespace ecs
 
       size_t Find(EntityID entity)
       {
-        /////////////////////
-        // Check if the last found entity is the same
-        if(findComponentCache.first == entity)
-          return findComponentCache.second;
-
-        int i = 0;
-        for(auto e : entities)
-        {
-          if(e == entity)
-          {
-            findComponentCache = {e, i};
-            return i;
-          }
-          i++;
-        }
-        return Size();
+        return entities.Find(entity);
       }
 
-      Iterator FindComponent(EntityID entity)
+      template <typename Component>
+      Component* FindComponent(EntityID entity)
       {
+        ASSERT(sizeof(Component) == byteSize, "Size of Component doesn't match the byteSize");
         size_t index = Find(entity);
         if(index < Size())
-          return Iterator(byteSize, (char*)memory+byteSize*index, memory, (char*)memory+byteSize*count);
-        return End();
+          return ((Component*)memory)+index;
+        return nullptr;
       }
 
       void* operator[](size_t index)
@@ -263,6 +216,9 @@ namespace ecs
         return Iterator(byteSize, (char*)memory+byteSize*count, memory, (char*)memory+byteSize*count);
       }
 
+      std::vector<EntityID>& GetEntities() { return entities.GetList(); }
+      const std::vector<EntityID>& GetEntities() const { return entities.GetList(); }
+
 
       // Needed to do for each loops
       Iterator begin()
@@ -273,16 +229,6 @@ namespace ecs
       Iterator end()
       {
         return End();
-      }
-
-      const std::vector<EntityID>& GetEntities() const
-      {
-        return entities;
-      }
-
-      std::vector<EntityID>& GetEntities()
-      {
-        return entities;
       }
 
     private:

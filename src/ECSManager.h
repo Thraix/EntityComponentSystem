@@ -37,17 +37,14 @@ namespace ecs
         return entityId-1;
       }
 
-      void DestroyEntityID(EntityID entity)
+      void DestroyEntity(EntityID entity)
       {
         auto it = std::find(entities.begin(), entities.end(), entity);
-        ASSERT(it != entities.end(), "Entity does not exist in ECSManager");
-
+        ASSERT(it != entities.end(), "Entity does not exist in ECSManager (entity=" << entity << ")");
         entities.erase(it);
-        for(auto&& pools : componentPool)
+        for(auto&& pool : componentPool)
         {
-          size_t index = pools.second->Find(entity);
-          if(index < pools.second->Size())
-            pools.second->EraseIndex(entity);
+          pool.second->Erase(entity);
         }
       }
 
@@ -69,7 +66,9 @@ namespace ecs
 
         if(it != componentPool.end())
         {
-          return *(Component*)*((it->second)->template Push<Component>(entity, Component(args...)).second);
+          Component* component = it->second->template FindComponent<Component>(entity);
+          ASSERT(!component, "Component already exists in entity (entity=" << entity << ", Component=" << typeid(Component).name() << ")")
+          return *(Component*)*((it->second)->template Emplace<Component>(entity, Component(args...)).second);
         }
         else
         {
@@ -85,7 +84,9 @@ namespace ecs
 
         if(it != componentPool.end())
         {
-          return *(Component*)*((it->second)->template Push<Component>(entity, component).second);
+          Component* component = it->second->template FindComponent<Component>(entity);
+          ASSERT(!component, "Component already exists in entity (entity=" << entity << ", Component=" << typeid(Component).name() << ")")
+          return *(Component*)*((it->second)->template Emplace<Component>(entity, component).second);
         }
         else
         {
@@ -98,16 +99,16 @@ namespace ecs
       void RemoveComponent(EntityID entity)
       {
         auto it = componentPool.find(GetComponentId<Component>());
-        ASSERT(it != componentPool.end(), "Component has not been added to an entity");
-        it->second->EraseEntityID(entity);
+        ASSERT(it != componentPool.end(), "Component has not been added to an entity (Component=" << typeid(Component).name() << ")")
+        ASSERT(it->second->Erase(entity), "Entity did not contain component (entity=" << entity << ", Component=" << typeid(Component).name() << ")")
       }
 
       template <typename Component>
       Component& GetComponent(EntityID entity)
       {
         auto it = componentPool.find(GetComponentId<Component>());
-        ASSERT(it != componentPool.end(), "Component has not been added to an entity");
-        return *(Component*)*it->second->template FindComponent(entity);
+        ASSERT(it != componentPool.end(), "Component has not been added to an entity (Component=" << typeid(Component).name() << ")")
+        return *it->second->template FindComponent<Component>(entity);
       }
 
       template <typename Component>

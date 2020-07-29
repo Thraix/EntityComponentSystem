@@ -5,7 +5,7 @@
 #ifdef _DEBUG
 #define ASSERT(x, msg) if(!(x)) \
 {\
-  std::cerr << "ASSERTION FAILED IN " << __FILE__ << ":" <<__LINE__ << ": " << msg << std::endl;\
+  std::cerr << "[ASSERTION FAILED]: " << msg << std::endl;\
   abort();\
 }
 #else
