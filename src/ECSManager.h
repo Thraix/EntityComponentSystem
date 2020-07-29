@@ -31,7 +31,9 @@ namespace ecs
 
       EntityID CreateEntity()
       {
+        std::cout << (uint32_t)-1 << std::endl;
         static EntityID entityId = 1;
+        ASSERT(entityId != (uint32_t)-1, "No more entities available");
         entities.push_back(entityId);
         entityId++;
         return entityId-1;
@@ -48,45 +50,21 @@ namespace ecs
         }
       }
 
-      template <typename Component>
-      Component* GetComponent(int index)
-      {
-        auto it = componentPool.find(GetComponentId<Component>());
-        if(it != componentPool.end())
-        {
-          return it->second->template At<Component>(index);
-        }
-        return nullptr;
-      }
-
       template <typename Component, typename... Args>
       Component& AddComponent(EntityID entity, Args&&... args)
       {
-        auto it = componentPool.find(GetComponentId<Component>());
-
-        if(it != componentPool.end())
-        {
-          Component* component = it->second->template FindComponent<Component>(entity);
-          ASSERT(!component, "Component already exists in entity (entity=" << entity << ", Component=" << typeid(Component).name() << ")")
-          return *(Component*)*((it->second)->template Emplace<Component>(entity, Component(args...)).second);
-        }
-        else
-        {
-          auto ret = componentPool.emplace(GetComponentId<Component>(), new ComponentSet{entity, Component{args...}});
-          return *((*ret.first).second->template At<Component>(0));
-        }
+        return AddComponent(entity, Component(args...));
       }
 
       template <typename Component>
-      Component& AddComponent(EntityID entity, Component&& component)
+      Component& AddComponent(EntityID entity, const Component& component)
       {
         auto it = componentPool.find(GetComponentId<Component>());
 
         if(it != componentPool.end())
         {
-          Component* component = it->second->template FindComponent<Component>(entity);
-          ASSERT(!component, "Component already exists in entity (entity=" << entity << ", Component=" << typeid(Component).name() << ")")
-          return *(Component*)*((it->second)->template Emplace<Component>(entity, component).second);
+          ASSERT(!HasComponent<Component>(entity), "Component already exists in entity (entity=" << entity << ", Component=" << typeid(Component).name() << ")")
+          return *(Component*)*it->second->template Emplace<Component>(entity, component).second;
         }
         else
         {
@@ -107,8 +85,10 @@ namespace ecs
       Component& GetComponent(EntityID entity)
       {
         auto it = componentPool.find(GetComponentId<Component>());
-        ASSERT(it != componentPool.end(), "Component has not been added to an entity (Component=" << typeid(Component).name() << ")")
-        return *it->second->template FindComponent<Component>(entity);
+        ASSERT(it != componentPool.end(), "Component has not been added to an entity (Component=" << typeid(Component).name() << ")");
+        Component* component = it->second->template FindComponent<Component>(entity);
+        ASSERT(component, "Entity did not contain component (entity=" << entity << ", Component=" << typeid(Component).name() << ")")
+        return *component;
       }
 
       template <typename Component>

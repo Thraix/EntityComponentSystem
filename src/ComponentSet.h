@@ -89,18 +89,14 @@ namespace ecs
       size_t reserve;
       void* memory;
       EntitySet entities;
+      const std::type_info& componentId;
 
     public:
-      ComponentSet(size_t byteSize)
-        : byteSize{byteSize}, reserve{1}, count{0}, memory{malloc(byteSize)}
-      {
-      }
-
       template <typename Component>
-      ComponentSet(EntityID entity, Component&& component)
-        : byteSize{sizeof(Component)}, reserve{1}, count{0}, memory{malloc(sizeof(Component))}
+      ComponentSet(EntityID entity, const Component& component)
+        : byteSize{sizeof(Component)}, reserve{1}, count{0}, memory{malloc(sizeof(Component))}, componentId{typeid(Component)}
       {
-        Emplace<Component>(entity, std::move(component));
+        Emplace<Component>(entity, component);
       }
 
       ComponentSet(const ComponentSet& set) = delete;
@@ -115,9 +111,9 @@ namespace ecs
       }
 
       template <typename Component>
-      std::pair<bool, Iterator> Emplace(EntityID entity, Component&& component)
+      std::pair<bool, Iterator> Emplace(EntityID entity, const Component& component)
       {
-        ASSERT(sizeof(Component) == byteSize, "Size of Component doesn't match the byteSize");
+        ASSERT(componentId == typeid(Component), "Invalid component cast in ComponentSet");
         if(!CheckResize())
           return {false, End()};
 
@@ -150,6 +146,7 @@ namespace ecs
       template<typename Component>
       Component* At(size_t index)
       {
+        ASSERT(componentId == typeid(Component), "Invalid component cast in ComponentSet");
         return (Component*)operator[](index);
       }
 
@@ -161,7 +158,7 @@ namespace ecs
       template <typename Component>
       Component* FindComponent(EntityID entity)
       {
-        ASSERT(sizeof(Component) == byteSize, "Size of Component doesn't match the byteSize");
+        ASSERT(componentId == typeid(Component), "Invalid component cast in ComponentSet");
         size_t index = Find(entity);
         if(index < Size())
           return ((Component*)memory)+index;
