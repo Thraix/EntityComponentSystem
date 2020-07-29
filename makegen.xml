@@ -1,0 +1,16 @@
+<makegen>
+  <configuration name="Release">
+    <cflag>-g</cflag>
+    <define>_DEBUG</define>
+    <define>_USE_MATH_DEFINES</define>
+    <generatehfile>false</generatehfile>
+    <hfilename>Entity Component System.h</hfilename>
+    <outputdir>bin/</outputdir>
+    <outputname>ecs.x86_64</outputname>
+    <outputtype>executable</outputtype>
+    <projectname>Entity Component System</projectname>
+    <srcdir>src/</srcdir>
+  </configuration>
+  <target>Release</target>
+  <version>v1.3.0</version>
+</makegen>

@@ -1,96 +1,173 @@
 #pragma once
 
+#include <algorithm>
+#include <functional>
+#include <iostream>
+#include <set>
+#include <typeindex>
 #include <unordered_map>
 #include <vector>
-#include <set>
-#include <iostream>
-#include "Component.h"
-#include "ComponentContainer.h"
-#include "EntityContainer.h"
+
+#include "ComponentSet.h"
+#include "Config.h"
 
 namespace ecs
 {
-  class Entity;
-  class SystemBase;
-
-  class ECSManager
+  class ECSManager final
   {
-    friend class Entity;
-
     private:
-      bool destroyingEntity;
-      std::vector<Entity*> entities;
-      std::vector<SystemBase*> systems;
-      std::unordered_map<ComponentId, ComponentContainer*> componentHandler;
-      std::unordered_map<ComponentId, std::set<int>> removeComponentQueue;
+      bool destroyingEntityID;
+      std::vector<EntityID> entities;
+      std::unordered_map<std::type_index, ComponentSet*> componentPool;
     public:
-      Entity* CreateEntity();
-      void DestroyEntity(Entity* entity);
+      ~ECSManager()
+      {
+        for(auto&& components : componentPool)
+        {
+          delete components.second;
+        }
+        componentPool.clear();
+      }
+
+      EntityID CreateEntity()
+      {
+        static EntityID entityId = 1;
+        entities.push_back(entityId);
+        entityId++;
+        return entityId-1;
+      }
+
+      void DestroyEntityID(EntityID entity)
+      {
+        auto it = std::find(entities.begin(), entities.end(), entity);
+        ASSERT(it != entities.end(), "Entity does not exist in ECSManager");
+
+        entities.erase(it);
+        for(auto&& pools : componentPool)
+        {
+          size_t index = pools.second->Find(entity);
+          if(index < pools.second->Size())
+            pools.second->EraseIndex(entity);
+        }
+      }
 
       template <typename Component>
       Component* GetComponent(int index)
       {
-        auto it = componentHandler.find(GetComponentId<Component>());
-        if(it != componentHandler.end())
+        auto it = componentPool.find(GetComponentId<Component>());
+        if(it != componentPool.end())
         {
           return it->second->template At<Component>(index);
         }
         return nullptr;
       }
 
-      void AddSystem(SystemBase* system);
-      SystemBase* RemoveSystem(SystemBase* system);
-
-      template <typename... Components>
-      EntityContainer<std::vector<Entity*>&, Components...> GetEntities()
-      {
-        return EntityContainer<decltype(entities)&,Components...>(entities);
-      }
-
-      void Update(float deltaTime);
-
-    private:
       template <typename Component, typename... Args>
-      int CreateComponent(Args... args)
+      Component& AddComponent(EntityID entity, Args&&... args)
       {
-        auto it = componentHandler.find(GetComponentId<Component>());
+        auto it = componentPool.find(GetComponentId<Component>());
 
-        if(it != componentHandler.end())
+        if(it != componentPool.end())
         {
-          it->second->Push(Component(args...));
-          return it->second->Size() - 1; 
+          return *(Component*)*((it->second)->template Push<Component>(entity, Component(args...)).second);
         }
         else
         {
-          ComponentContainer* container = new ComponentContainer(sizeof(Component));
-          container->Push(Component(args...));
-          componentHandler.emplace(GetComponentId<Component>(), container);
-          return 0;
+          auto ret = componentPool.emplace(GetComponentId<Component>(), new ComponentSet{entity, Component{args...}});
+          return *((*ret.first).second->template At<Component>(0));
         }
       }
 
       template <typename Component>
-      void DestroyComponent(int index)
+      Component& AddComponent(EntityID entity, Component&& component)
       {
-        ASSERT(
-            componentHandler.find(GetComponentId<Component>()) != componentHandler.end(), 
-            "Cannot find component type in ComponentHandler");
-        auto it = removeComponentQueue.find(GetComponentId<Component>());
-        if(it == removeComponentQueue.end())
+        auto it = componentPool.find(GetComponentId<Component>());
+
+        if(it != componentPool.end())
         {
-          removeComponentQueue.emplace(GetComponentId<Component>(), std::set<int>{index});
+          return *(Component*)*((it->second)->template Push<Component>(entity, component).second);
         }
-        else 
+        else
         {
-          it->second.emplace(index);
+          auto ret = componentPool.emplace(GetComponentId<Component>(), new ComponentSet{entity, component});
+          return *((*ret.first).second->template At<Component>(0));
         }
       }
 
-      void RemoveDestroyed();
+      template <typename Component>
+      void RemoveComponent(EntityID entity)
+      {
+        auto it = componentPool.find(GetComponentId<Component>());
+        ASSERT(it != componentPool.end(), "Component has not been added to an entity");
+        it->second->EraseEntityID(entity);
+      }
 
-      void RemoveDestroyedEntities(std::unordered_map<ComponentId, std::set<int>>& removedComponents);
-      void RemoveDestroyedComponents(std::unordered_map<ComponentId, std::set<int>>& removedComponents);
-      void UpdateEntityComponentIndex(std::unordered_map<ComponentId, std::set<int>>& removedComponents);
+      template <typename Component>
+      Component& GetComponent(EntityID entity)
+      {
+        auto it = componentPool.find(GetComponentId<Component>());
+        ASSERT(it != componentPool.end(), "Component has not been added to an entity");
+        return *(Component*)*it->second->template FindComponent(entity);
+      }
 
+      template <typename Component>
+      bool HasComponent(EntityID entity)
+      {
+        auto it = componentPool.find(GetComponentId<Component>());
+        if(it != componentPool.end())
+          return it->second->Find(entity) != it->second->Size();
+        return false;
+      }
+
+      template <typename... Components>
+      bool HasComponents(EntityID entity)
+      {
+        return (HasComponent<Components>(entity) && ...);
+      }
+
+      template <typename Component, typename... Components, typename Func>
+      void Each(Func function)
+      {
+        auto it = componentPool.find(GetComponentId<Component>());
+        if(it != componentPool.end())
+        {
+          size_t i = 0;
+          for(auto entity : it->second->GetEntities())
+          {
+            if(HasComponents<Components...>(entity))
+            {
+              std::apply(function, std::forward_as_tuple(entity, *it->second->template At<Component>(i), GetComponent<Components>(entity)...));
+            }
+            i++;
+          }
+        }
+      }
+
+      template <typename Component>
+      void Each(std::function<void(EntityID, Component&)> function)
+      {
+        auto it = componentPool.find(GetComponentId<Component>());
+        if(it != componentPool.end())
+        {
+          size_t i = 0;
+          for(auto e : it->second->GetEntities())
+          {
+            function(e, *it->second->template At<Component>(i));
+            i++;
+          }
+        }
+      }
+
+      void Each(std::function<void(EntityID)> function)
+      {
+        for(auto e : entities)
+          function(e);
+      }
+
+      template <typename T>
+      std::type_index GetComponentId()
+      {
+        return std::type_index(typeid(T));
+      }
   };
 }

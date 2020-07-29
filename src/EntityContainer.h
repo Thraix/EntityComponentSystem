@@ -1,85 +1,86 @@
-#pragma once
+/* #pragma once */
 
-#include <functional>
-#include <iostream>
+/* #include <functional> */
+/* #include <iostream> */
 
-namespace ecs
-{
-  class Entity;
-  template <typename iterator, typename...Components>
-  class EntityIterator
-  {
-    public:
+/* #include "Config.h" */
 
-      using difference_type = void;
-      using value_type = Entity*;
-      using pointer = void;
-      using reference = Entity*;
-      using iterator_category = std::bidirectional_iterator_tag;	
+/* namespace ecs */
+/* { */
+/*   template <typename iterator, typename...Components> */
+/*   class EntityIterator */
+/*   { */
+/*     public: */
 
-      iterator it;
-      iterator last;
+/*       using difference_type = void; */
+/*       using value_type = Entity; */
+/*       using pointer = void; */
+/*       using reference = Entity; */
+/*       using iterator_category = std::bidirectional_iterator_tag; */
 
-      EntityIterator(iterator it, iterator last)
-        : it{it}, last{last}
-      {
-        IncreaseToValid();
-      }
+/*       iterator it; */
+/*       iterator last; */
 
-      void IncreaseToValid()
-      {
-        while(it != last && !(*it)->template HasComponents<Components...>())
-        {
-          ++it;
-        }
-      }
+/*       EntityIterator(iterator it, iterator last) */
+/*         : it{it}, last{last} */
+/*       { */
+/*         IncreaseToValid(); */
+/*       } */
 
-      value_type operator*()
-      {
-        return *it;
-      }
+/*       void IncreaseToValid() */
+/*       { */
+/*         while(it != last && !(*it)->template HasComponents<Components...>()) */
+/*         { */
+/*           ++it; */
+/*         } */
+/*       } */
 
-      EntityIterator<iterator, Components...>& operator++()
-      {
-        if(it != last)
-          ++it;
-        IncreaseToValid();
-        return *this;
-      }
+/*       value_type operator*() */
+/*       { */
+/*         return *it; */
+/*       } */
 
-      EntityIterator<iterator, Components...> operator++(int)
-      {
-        auto tmp{*this};
-        ++*this;
-        return tmp;
-      }
+/*       EntityIterator<iterator, Components...>& operator++() */
+/*       { */
+/*         if(it != last) */
+/*           ++it; */
+/*         IncreaseToValid(); */
+/*         return *this; */
+/*       } */
 
-      bool operator==(EntityIterator<iterator, Components...> other)
-      {
-        return it == other.it;
-      }
+/*       EntityIterator<iterator, Components...> operator++(int) */
+/*       { */
+/*         auto tmp{*this}; */
+/*         ++*this; */
+/*         return tmp; */
+/*       } */
 
-      bool operator!=(EntityIterator<iterator, Components...> other)
-      {
-        return it != other.it;
-      }
-  };
+/*       bool operator==(EntityIterator<iterator, Components...> other) */
+/*       { */
+/*         return it == other.it; */
+/*       } */
 
-  template <typename Container, typename... Components>
-  class EntityContainer
-  {
-    using iterator = decltype(std::begin(std::declval<Container>()));
-    private:
-      EntityIterator<iterator,Components...> first;
-      EntityIterator<iterator,Components...> last;
+/*       bool operator!=(EntityIterator<iterator, Components...> other) */
+/*       { */
+/*         return it != other.it; */
+/*       } */
+/*   }; */
 
-    public:
-      EntityContainer(Container& c)
-        : first{std::begin(c), std::end(c)}, last{std::end(c), std::end(c)}
-      {}
+/*   template <typename Container, typename... Components> */
+/*   class EntityContainer */
+/*   { */
+/*     using iterator = decltype(std::begin(std::declval<Container>())); */
+/*     private: */
+/*       EntityIterator<iterator,Components...> first; */
+/*       EntityIterator<iterator,Components...> last; */
 
-      EntityIterator<iterator,Components...> begin() { return first;}
-      EntityIterator<iterator,Components...> end() { return last;}
+/*     public: */
+/*       EntityContainer(Container& c) */
+/*         : first{std::begin(c), std::end(c)}, last{std::end(c), std::end(c)} */
+/*       {} */
 
-  };
-}
+/*       EntityIterator<iterator,Components...> begin() { return first;} */
+/*       EntityIterator<iterator,Components...> end() { return last;} */
+
+/*   }; */
+/* } */

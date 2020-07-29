@@ -1,10 +1,8 @@
 #include <iostream>
 
 #include "ECSManager.h"
-#include "Entity.h"
-#include "System.h"
 
-#include "ComponentContainer.h"
+#include "ComponentSet.h"
 
 struct Transform
 {
@@ -23,7 +21,7 @@ struct Transform
 struct Renderable
 {};
 
-struct Movement 
+struct Movement
 {
   float vx;
   float vy;
@@ -43,130 +41,82 @@ struct Nameable
   std::string name;
   Nameable(const std::string& name)
     : name{name}
-  {
-
-  }
+  {}
 };
 
-struct MoveSystem : public ecs::System<Transform, Movement>
+void MoveSystem(ecs::ECSManager* manager, float deltaTime)
 {
-  void Update(ecs::ECSManager* manager, float deltaTime) override
+  manager->Each<Transform, Movement>([deltaTime](EntityID entity, Transform& transform, Movement& movement)
   {
-    // These are guaranteed to exist
-    for(auto&& entity : GetEntities(manager)){
-      Transform* transform = entity->GetComponent<Transform>();
-      Movement* movement = entity->GetComponent<Movement>();
-      transform->x += movement->vx * deltaTime;
-      transform->y += movement->vy * deltaTime;
-    }
-  }
-};
+    transform.x += movement.vx * deltaTime;
+    transform.y += movement.vy * deltaTime;
+  });
+}
 
-struct PhysicalSystem : public ecs::System<Transform, Collidable>
+void DebugSystem(ecs::ECSManager* manager)
 {
-  void Update(ecs::ECSManager* manager, float deltaTime)
+  manager->Each<Nameable, Transform>([](EntityID entity, Nameable& nameable, Transform& transform)
   {
-    auto entities = GetEntities(manager);
-    for(auto it = entities.begin(); it != entities.end(); ++it)
-    {
-      //ASSERT((*it)->HasComponents<Collidable>(), "entity doesn't have specified component");
-      for(auto it2 = it; it2 != entities.end(); ++it2)
-      {
-        if(it2 == it)
-          continue;
-        CheckCollision(*it, *it2);
-      }
-    }
-  }
-
-  void CheckCollision(ecs::Entity* e1, ecs::Entity* e2)
-  {
-    Transform* t1 = e1->GetComponent<Transform>();
-    Transform* t2 = e2->GetComponent<Transform>();
-
-    if(t1->x < t2->x + t2->sx && t1->y < t2->y + t2->sy && t2->x < t1->x + t1->sx && t2->y < t1->y + t1->sy)
-    {
-      std::cout << "Collision has occured" << std::endl;
-    }
-  }
-};
-
-struct TransformDebugSystem : public ecs::System<Nameable, Transform>
-{
-
-  void Update(ecs::ECSManager* manager, float deltaTime)
-  {
-    for(auto&& entity : GetEntities(manager))
-    {
-      std::cout << entity->GetComponent<Nameable>()->name << " is at location: " << entity->GetComponent<Transform>()->x << ", " << entity->GetComponent<Transform>()->y << std::endl;
-    }
-  }
-};
-
+    std::cout << nameable.name << " is at location: " << transform.x << ", " << transform.y << std::endl;
+  });
+}
 
 int main()
 {
 #if 1
   using namespace ecs;
   ECSManager* manager = new ECSManager();
-  Entity* entity = manager->CreateEntity();
-  entity->AddComponent<Transform>(1.1f, 2.0f);
-  entity->AddComponent<Movement>(1.0, 0.0);
-  entity->AddComponent<Collidable>();
-  entity->AddComponent<Nameable>("slim shady");
+  EntityID entity = manager->CreateEntity();
+  manager->AddComponent<Transform>(entity, 1.1f, 2.0f);
+  /* manager->AddComponent<Transform>(entity, 1.1f, 2.0f); */
+  manager->AddComponent<Movement>(entity, 1.0f, 0.0f);
+  manager->AddComponent<Collidable>(entity);
+  manager->AddComponent<Nameable>(entity, "EntityID 1");
 
-  Entity* dummy = manager->CreateEntity();
-  dummy->AddComponent<Nameable>("Lil Pump");
-  dummy->AddComponent<Transform>(10.0f, 2.0f, 2.0, 2.0);
+  EntityID dummy = manager->CreateEntity();
+  manager->AddComponent<Nameable>(dummy, "EntityID 2");
+  manager->AddComponent<Transform>(dummy, 10.0f, 2.0f, 2.0f, 2.0f);
+  manager->AddComponent<Movement>(dummy, 10.0f, 2.0f);
 
-  Entity* entity2 = manager->CreateEntity();
-  entity2->AddComponent<Nameable>("Big shack");
-  entity2->AddComponent<Transform>(10.0f, 2.0f, 2.0, 2.0);
-  entity2->AddComponent<Movement>(0.0, 0.0);
-  entity2->AddComponent<Collidable>();
+  EntityID entity2 = manager->CreateEntity();
+  manager->AddComponent<Nameable>(entity2, "EntityID 3");
+  manager->AddComponent<Transform>(entity2, 10.0f, 2.0f, 2.0f, 2.0f);
+  manager->AddComponent<Movement>(entity2, 0.0f, 0.0f);
+  manager->AddComponent<Collidable>(entity2);
+  manager->Each([](EntityID entity){
+      std::cout << "EntityID: " << entity << std::endl;
+      });
+  manager->Each<Collidable>([](EntityID entity, Collidable& collidable){
+      std::cout << "EntityID: " << entity << std::endl;
+      });
 
-  TransformDebugSystem* debugSystem = new TransformDebugSystem();
+  manager->Each<Transform, Movement, Collidable>([](EntityID entity, Transform& transform, Movement& movement, Collidable&){
+      std::cout << "Each: " << entity << std::endl;
+      });
 
-  manager->AddSystem(new MoveSystem());
-  manager->AddSystem(new PhysicalSystem());
-  manager->AddSystem(debugSystem);
+  /* TransformDebugSystem* debugSystem = new TransformDebugSystem(); */
+
+  /* manager->AddSystem(new MoveSystem()); */
+  /* manager->AddSystem(new PhysicalSystem()); */
+  /* manager->AddSystem(debugSystem); */
 
   // Main loop
   for(int i = 0;i<10;i++)
   {
     std::cout << i << std::endl;
-    manager->Update(1.0f);
+    MoveSystem(manager, 1.0f);
+    /* manager->Update(1.0f); */
     if(i == 1)
-      manager->DestroyEntity(dummy);
-    if(i == 3)
-      manager->RemoveSystem(debugSystem);
+      manager->DestroyEntityID(dummy);
+    if(i < 7)
+      DebugSystem(manager);
     if(i == 8)
     {
-      entity->RemoveComponent<Collidable>();
+      manager->RemoveComponent<Collidable>(entity);
     }
   }
 #endif
 
-  ecs::ComponentContainer container = ecs::ComponentContainer(sizeof(Transform));
-  for(float i = 0;i<10;i++)
-  {
-    container.Push(Transform(i,i));
-  }
-  container.ShrinkToFit();
-
-  //container.Pop();
-  container.Erase(3);
-  container.Insert(3, Transform(3,3));
-  for(auto comp : container)
-  {
-    Transform* t = (Transform*)comp;
-    std::cout << t->x << " " << t->y << std::endl;
-  }
-
-  std::cout << container.Capacity() << std::endl;
-
-  std::vector<int> vec;
-  vec.begin();
-
+  delete manager;
   return 0;
 }

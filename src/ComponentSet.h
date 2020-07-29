@@ -1,7 +1,9 @@
 #pragma once
 
 #include "Common.h"
+#include "Config.h"
 
+#include <vector>
 #include <stdlib.h>
 #include <cstring>
 #include <utility>
@@ -19,7 +21,7 @@ namespace ecs
     using value_type = void*;
     using pointer = void;
     using reference = void*;
-    using iterator_category = std::bidirectional_iterator_tag;	
+    using iterator_category = std::bidirectional_iterator_tag;
 
     private:
       void* it;
@@ -77,7 +79,7 @@ namespace ecs
       }
   };
 
-  class ComponentContainer
+  class ComponentSet
   {
     using Iterator = ComponentIterator;
     private:
@@ -85,32 +87,41 @@ namespace ecs
       size_t count;
       size_t reserve;
       void* memory;
+      std::vector<EntityID> entities;
+
+      // Keep track of the last found entity to speed up component getters
+      std::pair<EntityID, size_t> findComponentCache = {0, 0};
 
     public:
-      ComponentContainer(size_t byteSize, size_t n=0)
-        : byteSize{byteSize}, reserve{n}, count{0}, memory{malloc(n)}
+      ComponentSet(size_t byteSize)
+        : byteSize{byteSize}, reserve{1}, count{0}, memory{malloc(byteSize)}
       {
-
       }
 
-      ComponentContainer(const ComponentContainer&) = delete;
+      template <typename Component>
+      ComponentSet(EntityID entity, Component&& component)
+        : byteSize{sizeof(Component)}, reserve{1}, count{0}, memory{malloc(sizeof(Component))}
+      {
+        Push<Component>(entity, std::move(component));
+      }
 
-      ~ComponentContainer()
+      ~ComponentSet()
       {
         free(memory);
       }
 
       template <typename Component>
-      bool Push(Component&& component)
+      std::pair<bool, Iterator> Push(EntityID entity, Component&& component)
       {
         ASSERT(sizeof(Component) == byteSize, "Size of Component doesn't match the byteSize");
         if(!CheckResize())
-          return false;
+          return {false, End()};
 
         Component* comp = ((Component*)memory)+count;
-        *comp = std::forward<Component>(component);
+        *comp = component;
         count++;
-        return true;
+        entities.push_back(entity);
+        return {true, Last()};
       }
 
       void Pop()
@@ -119,30 +130,38 @@ namespace ecs
       }
 
       template <typename Component>
-      bool Insert(size_t index, Component&& component)
+      std::pair<bool, Iterator> Insert(size_t index, EntityID entity, Component&& component)
       {
         ASSERT(sizeof(Component) == byteSize, "Size of Component doesn't match the byteSize");
         ASSERT(index < count, "Index Out of Bound Exception");
         if(!CheckResize())
-          return false;
+          return {false, End()};
 
         if(index == count)
           return Push(std::forward<Component>(component));
 
         memmove(
-            (char*)memory + (index+1)*byteSize, 
-            (char*)memory + index*byteSize, 
+            (char*)memory + (index+1)*byteSize,
+            (char*)memory + index*byteSize,
             (count - index)*byteSize);
 
         Component* comp = ((Component*)memory)+index;
         *comp = std::forward<Component>(component);
         count++;
+        entities.insert(entities.begin() + index, entity);
 
-        return true;
+        return {true, Last()};
 
       }
 
-      void Erase(size_t index)
+      void EraseEntityID(EntityID entity)
+      {
+        size_t index = Find(entity);
+        ASSERT(index < Size(), "EntityID does not have component");
+        EraseIndex(index);
+      }
+
+      void EraseIndex(size_t index)
       {
         ASSERT(index < count, "Index Out of Bound Exception");
 
@@ -154,9 +173,10 @@ namespace ecs
         }
 
         memmove(
-            (char*)memory + index*byteSize, 
-            (char*)memory + (index+1)*byteSize, 
+            (char*)memory + index*byteSize,
+            (char*)memory + (index+1)*byteSize,
             (count - index - 1)*byteSize);
+        entities.erase(entities.begin() + index);
 
         count--;
       }
@@ -165,6 +185,34 @@ namespace ecs
       Component* At(size_t index)
       {
         return (Component*)operator[](index);
+      }
+
+      size_t Find(EntityID entity)
+      {
+        /////////////////////
+        // Check if the last found entity is the same
+        if(findComponentCache.first == entity)
+          return findComponentCache.second;
+
+        int i = 0;
+        for(auto e : entities)
+        {
+          if(e == entity)
+          {
+            findComponentCache = {e, i};
+            return i;
+          }
+          i++;
+        }
+        return Size();
+      }
+
+      Iterator FindComponent(EntityID entity)
+      {
+        size_t index = Find(entity);
+        if(index < Size())
+          return Iterator(byteSize, (char*)memory+byteSize*index, memory, (char*)memory+byteSize*count);
+        return End();
       }
 
       void* operator[](size_t index)
@@ -186,7 +234,7 @@ namespace ecs
       void Reserve(size_t reservate)
       {
         ASSERT(reservate >= count, "Trying to reserve less than the size of the container");
-        void* newmem = malloc(reservate * byteSize); 
+        void* newmem = malloc(reservate * byteSize);
         memcpy(newmem, memory, count * byteSize);
         free(memory);
         memory = newmem;
@@ -201,6 +249,13 @@ namespace ecs
       Iterator Begin()
       {
         return Iterator(byteSize, memory, memory, (char*)memory+byteSize*count);
+      }
+
+      Iterator Last()
+      {
+        if(Size() == 0)
+          return End();
+        return Iterator(byteSize, (char*)memory+byteSize*count - byteSize, memory, (char*)memory+byteSize*count);
       }
 
       Iterator End()
@@ -218,6 +273,16 @@ namespace ecs
       Iterator end()
       {
         return End();
+      }
+
+      const std::vector<EntityID>& GetEntities() const
+      {
+        return entities;
+      }
+
+      std::vector<EntityID>& GetEntities()
+      {
+        return entities;
       }
 
     private:
