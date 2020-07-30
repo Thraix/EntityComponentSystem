@@ -1,7 +1,7 @@
 #pragma once
 
-#include <vector>
 #include <unordered_map>
+#include <vector>
 
 #include "Config.h"
 
@@ -50,6 +50,11 @@ namespace ecs
         if(it == entitiesMap.end())
           return entitiesList.size();
         return it->second;
+      }
+
+      size_t Size() const
+      {
+        return entitiesList.size();
       }
 
       std::vector<EntityID>& GetList() { return entitiesList; }

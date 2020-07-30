@@ -1,8 +1,7 @@
 #include <iostream>
 
 #include "ECSManager.h"
-
-#include "ComponentSet.h"
+#include "Entity.h"
 
 struct Transform
 {
@@ -69,22 +68,22 @@ int main()
 #if 1
   using namespace ecs;
   ECSManager* manager = new ECSManager();
-  EntityID entity = manager->CreateEntity();
-  manager->AddComponent<Transform>(entity, 1.1f, 2.0f);
-  manager->AddComponent<Movement>(entity, 1.0f, 0.0f);
-  manager->AddComponent<Collidable>(entity);
-  manager->AddComponent<Nameable>(entity, "Entity 1");
 
-  EntityID dummy = manager->CreateEntity();
-  manager->AddComponent<Nameable>(dummy, "Entity 2");
-  manager->AddComponent<Transform>(dummy, 10.0f, 2.0f, 2.0f, 2.0f);
-  manager->AddComponent<Movement>(dummy, 10.0f, 2.0f);
+  Entity entity = Entity::Create(manager);
+  entity.AddComponent<Nameable>("Entity 1");
+  entity.AddComponent<Transform>(1.1f, 2.0f);
+  entity.AddComponent<Movement>(1.0f, 0.0f);
+  entity.AddComponent<Collidable>();
 
-  EntityID entity2 = manager->CreateEntity();
-  manager->AddComponent<Nameable>(entity2, "Entity 3");
-  manager->AddComponent<Transform>(entity2, 10.0f, 2.0f, 2.0f, 2.0f);
-  manager->AddComponent<Movement>(entity2, 0.0f, 0.0f);
-  manager->AddComponent<Collidable>(entity2);
+  Entity dummy = Entity::Create(manager);
+  dummy.AddComponent<Nameable>("Entity 2");
+  dummy.AddComponent<Transform>(10.0f, 2.0f, 2.0f, 2.0f);
+  dummy.AddComponent<Movement>(10.0f, 2.0f);
+
+  Entity entity2 = Entity::Create(manager);
+  auto[name, trans, movement, collidable] = entity2.AddComponents<Nameable, Transform, Movement, Collidable>({"Entity 3"},{20.0f, 2.0f, 2.0f,2.0f}, {0.0f, 0.0f}, {});
+  trans.x = 30;
+
   manager->Each([](EntityID entity){
       std::cout << "EntityID: " << entity << std::endl;
       });
@@ -113,10 +112,8 @@ int main()
     if(i < 7)
       DebugSystem(manager);
     if(i >= 8)
-    {
       if(manager->HasComponent<Collidable>(entity))
         manager->RemoveComponent<Collidable>(entity);
-    }
   }
 #endif
 
