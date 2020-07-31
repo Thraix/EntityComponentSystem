@@ -95,12 +95,6 @@ int main()
       std::cout << "Each: " << entity << std::endl;
       });
 
-  /* TransformDebugSystem* debugSystem = new TransformDebugSystem(); */
-
-  /* manager->AddSystem(new MoveSystem()); */
-  /* manager->AddSystem(new PhysicalSystem()); */
-  /* manager->AddSystem(debugSystem); */
-
   // Main loop
   for(int i = 0;i<10;i++)
   {
